@@ -1,0 +1,12 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output of the go build command
+crease-crusaders-2
+
+# OS generated files
+.DS_Store
