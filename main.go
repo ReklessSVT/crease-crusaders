@@ -20,5 +20,3 @@ func main() {
 	// Start the server
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
-
-//test
