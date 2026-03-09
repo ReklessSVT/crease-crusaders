@@ -37,6 +37,13 @@ func getStandings() ([]Division, error) {
 	return response.Divisions, err
 }
 
+func getDetailedStats() ([]DetailedGame, error) {
+	url := "https://scorekeeper-prod-sync.marc-ecf.workers.dev/season?seasonId=2026-winter&mode=full&include=live"
+	var response DetailedStatsResponse
+	err := fetchJSON(url, &response)
+	return response.Games, err
+}
+
 func getForecast() (HourlyWeather, error) {
 	// Free API, no key needed
 	url := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=temperature_2m,weathercode&temperature_unit=fahrenheit&timezone=America%%2FNew_York", Lat, Long)

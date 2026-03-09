@@ -49,6 +49,32 @@ type RecordStats struct {
 	Ties   int `json:"t"`
 }
 
+// --- DETAILED STATS API ---
+type DetailedStatsResponse struct {
+	Games []DetailedGame `json:"games"`
+}
+
+type DetailedGame struct {
+	Division string         `json:"division"`
+	HomeTeam string         `json:"homeTeam"`
+	AwayTeam string         `json:"awayTeam"`
+	Goals    []DetailedGoal `json:"goals"`
+}
+
+type DetailedGoal struct {
+	Team   string `json:"team"`
+	Player string `json:"player"`
+	Assist string `json:"assist"` // Can be empty string "" if unassisted
+}
+
+type PlayerStat struct {
+	Name    string
+	Jersey  string
+	Goals   int
+	Assists int
+	Points  int
+}
+
 // --- WEATHER ---
 type WeatherResponse struct {
 	Hourly HourlyWeather `json:"hourly"`
@@ -80,7 +106,7 @@ type StandingsDisplay struct {
 
 type PageData struct {
 	TeamName  string
-	Roster    []Player
+	Roster    []PlayerStat
 	Games     []GameDisplay
 	Standings []StandingsDisplay
 	Updated   string

@@ -86,22 +86,35 @@
             </div>
         </div>
 
-        <div id="roster" class="tab-content">
+    <div id="roster" class="tab-content">
             <div class="card">
-                {{range .Roster}}
-                <div class="player-row">
-                    <div>
-                        <span class="jersey">{{if .Jersey}}#{{.Jersey}}{{else}}--{{end}}</span>
-                        {{.FirstName}} {{.LastName}}
-                    </div>
-                    <div style="color:#888; font-size:0.9em;">{{if .Position}}{{.Position}}{{end}}</div>
-                </div>
-                {{end}}
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="text-left" style="padding-left:15px;">Player</th>
+                            <th>G</th>
+                            <th>A</th>
+                            <th>Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Roster}}
+                        <tr>
+                            <td class="text-left" style="padding-left:15px;">
+                                <span class="jersey" style="width: 25px; display:inline-block; font-size:0.8em; color:#999;">
+                                    {{if .Jersey}}#{{.Jersey}}{{else}}--{{end}}
+                                </span>
+                                <span style="font-weight:500;">{{.Name}}</span>
+                            </td>
+                            <td>{{.Goals}}</td>
+                            <td>{{.Assists}}</td>
+                            <td style="font-weight:bold;">{{.Points}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
             </div>
         </div>
-
-        <p style="text-align:center; color:#999; font-size:0.8em; margin-top:30px;">Updated: {{.Updated}}</p>
-    </div>
 
     <script>
         function openTab(tabName) {
