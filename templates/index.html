@@ -4,7 +4,6 @@
     <title>{{.TeamName}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        /* ... Paste all your CSS here ... */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; color: #333; margin: 0; padding: 0; }
         .container { max-width: 600px; margin: 0 auto; padding: 15px; }
         h1 { text-align: center; color: #003366; margin: 10px 0 20px 0; }
@@ -39,9 +38,9 @@
 </head>
 <body>
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab('games')">Games</button>
-        <button class="tab-btn" onclick="openTab('standings')">Standings</button>
-        <button class="tab-btn" onclick="openTab('roster')">Roster</button>
+        <button class="tab-btn active" onclick="openTab('games', this)">Games</button>
+        <button class="tab-btn" onclick="openTab('standings', this)">Standings</button>
+        <button class="tab-btn" onclick="openTab('roster', this)">Roster</button>
     </div>
 
     <div class="container">
@@ -72,13 +71,24 @@
             <div class="card">
                 <table>
                     <thead>
-                        <tr><th class="text-left" style="padding-left:15px;">Team</th><th>GP</th><th>W</th><th>L</th><th>T</th></tr>
+                        <tr>
+                            <th class="text-left" style="padding-left:15px;">Team</th>
+                            <th>GP</th>
+                            <th>W</th>
+                            <th>L</th>
+                            <th>OTL</th>
+                            <th>Pts</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {{range .Standings}}
                         <tr class="{{if .IsUs}}my-team{{end}}">
-                            <td class="text-left" style="padding-left:15px;">{{.Team}}</td>
-                            <td>{{.GP}}</td><td>{{.W}}</td><td>{{.L}}</td><td>{{.T}}</td>
+                            <td class="text-left" style="padding-left:15px;">{{.Rank}}. {{.Team}}</td>
+                            <td>{{.GP}}</td>
+                            <td>{{.W}}</td>
+                            <td>{{.L}}</td>
+                            <td>{{.OTL}}</td>
+                            <td style="font-weight:bold; color:#003366;">{{.Pts}}</td>
                         </tr>
                         {{end}}
                     </tbody>
@@ -86,7 +96,7 @@
             </div>
         </div>
 
-    <div id="roster" class="tab-content">
+        <div id="roster" class="tab-content">
             <div class="card">
                 <table>
                     <thead>
@@ -116,14 +126,24 @@
             </div>
         </div>
 
+        <p style="text-align:center; color:#999; font-size:0.8em; margin-top:30px;">Updated: {{.Updated}}</p>
+    </div>
+
     <script>
-        function openTab(tabName) {
+        // UPDATED: Now receives the element directly, avoiding global event errors
+        function openTab(tabName, element) {
             var contents = document.getElementsByClassName("tab-content");
-            for (var i = 0; i < contents.length; i++) contents[i].classList.remove("active");
+            for (var i = 0; i < contents.length; i++) {
+                contents[i].classList.remove("active");
+            }
+            
             var buttons = document.getElementsByClassName("tab-btn");
-            for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove("active");
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("active");
+            }
+            
             document.getElementById(tabName).classList.add("active");
-            event.currentTarget.classList.add("active");
+            element.classList.add("active");
         }
     </script>
 </body>

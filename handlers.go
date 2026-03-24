@@ -5,24 +5,20 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 )
 
-// --- EMBEDDED FILES ---
-//
 //go:embed templates/*
 var resources embed.FS
 
-// --- CACHE STORAGE ---
 var cache struct {
 	sync.Mutex
 	Data      PageData
 	Timestamp time.Time
 }
-
-// --- CONTROLLER ---
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
 	data := getPageData()
@@ -35,13 +31,10 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, data)
 }
 
-// --- LOGIC ---
-
 func getPageData() PageData {
 	cache.Lock()
 	defer cache.Unlock()
 
-	// 1. Check Cache
 	if time.Since(cache.Timestamp) < 1*time.Hour && cache.Data.TeamName != "" {
 		fmt.Println("⚡ Serving from Cache")
 		return cache.Data
@@ -49,43 +42,35 @@ func getPageData() PageData {
 
 	fmt.Println("🐢 Cache expired/empty. Fetching from APIs...")
 
-	// 2. Fetch All Data
 	rawRoster, _ := getRoster()
 	rawGames, _ := getSchedule()
-	standings, _ := getStandings()
 	weather, _ := getForecast()
-	detailedGames, _ := getDetailedStats()
+	detailedGames, _ := getDetailedStats() // Has everything we need!
 
-	// 3. Process Roster & Stats
-	statsMap := make(map[string]*PlayerStat)
 	myTeamName := "Crease Crusaders"
 
-	// Initialize map with exact roster data
+	// ==========================================
+	// 1. Process Roster & Stats
+	// ==========================================
+	statsMap := make(map[string]*PlayerStat)
+
 	for _, p := range rawRoster {
 		fullName := p.FirstName + " " + p.LastName
 		statsMap[fullName] = &PlayerStat{
-			Name:    fullName,
-			Jersey:  p.Jersey,
-			Goals:   0,
-			Assists: 0,
-			Points:  0,
+			Name:   fullName,
+			Jersey: p.Jersey,
 		}
 	}
 
-	// Tally Goals and Assists using the fuzzy matcher
 	for _, g := range detailedGames {
 		if g.HomeTeam == myTeamName || g.AwayTeam == myTeamName {
 			for _, goal := range g.Goals {
 				if goal.Team == myTeamName {
-
-					// Use our fuzzy matcher to get the Roster Key ("Jeremy V")
 					playerKey := matchPlayerName(goal.Player, rawRoster)
-
 					if stat, exists := statsMap[playerKey]; exists {
 						stat.Goals++
 						stat.Points++
 					} else {
-						// Sub player not on official roster
 						statsMap[playerKey] = &PlayerStat{Name: goal.Player, Goals: 1, Points: 1}
 					}
 
@@ -108,7 +93,84 @@ func getPageData() PageData {
 		displayRoster = append(displayRoster, *stat)
 	}
 
-	// 4. Process Schedule + Weather
+	// Sort Roster by Points
+	sort.Slice(displayRoster, func(i, j int) bool {
+		if displayRoster[i].Points == displayRoster[j].Points {
+			return displayRoster[i].Goals > displayRoster[j].Goals
+		}
+		return displayRoster[i].Points > displayRoster[j].Points
+	})
+
+	// ==========================================
+	// 2. Process Custom Standings Logic
+	// ==========================================
+	standingsMap := make(map[string]*StandingsDisplay)
+
+	for _, g := range detailedGames {
+		// Only calculate finished games in the Bronze division
+		if g.Division == "Bronze" && g.Status == "submitted" {
+
+			if _, exists := standingsMap[g.HomeTeam]; !exists {
+				standingsMap[g.HomeTeam] = &StandingsDisplay{Team: g.HomeTeam, IsUs: g.HomeTeam == myTeamName}
+			}
+			if _, exists := standingsMap[g.AwayTeam]; !exists {
+				standingsMap[g.AwayTeam] = &StandingsDisplay{Team: g.AwayTeam, IsUs: g.AwayTeam == myTeamName}
+			}
+
+			h := standingsMap[g.HomeTeam]
+			a := standingsMap[g.AwayTeam]
+
+			h.GP++
+			a.GP++
+
+			// Check for Overtime/Shootout
+			if g.Overtime != nil {
+				if g.Overtime.Winner == g.HomeTeam {
+					h.W++      // Home Win
+					h.Pts += 2 // 2 Pts
+					a.OTL++    // Away OT Loss
+					a.Pts += 1 // 1 Pt
+				} else if g.Overtime.Winner == g.AwayTeam {
+					a.W++
+					a.Pts += 2
+					h.OTL++
+					h.Pts += 1
+				}
+			} else {
+				// Regulation Game
+				if g.HomeScore > g.AwayScore {
+					h.W++
+					h.Pts += 2
+					a.L++ // 0 Pts
+				} else if g.AwayScore > g.HomeScore {
+					a.W++
+					a.Pts += 2
+					h.L++ // 0 Pts
+				}
+			}
+		}
+	}
+
+	var displayStandings []StandingsDisplay
+	for _, s := range standingsMap {
+		displayStandings = append(displayStandings, *s)
+	}
+
+	// Sort Standings by Points, then by Wins
+	sort.Slice(displayStandings, func(i, j int) bool {
+		if displayStandings[i].Pts == displayStandings[j].Pts {
+			return displayStandings[i].W > displayStandings[j].W
+		}
+		return displayStandings[i].Pts > displayStandings[j].Pts
+	})
+
+	for i := range displayStandings {
+		displayStandings[i].Rank = i + 1
+	}
+
+	// ==========================================
+	// 3. Process Schedule + Weather
+	// ==========================================
 	var displayGames []GameDisplay
 	loc, _ := time.LoadLocation("America/New_York")
 
@@ -134,32 +196,9 @@ func getPageData() PageData {
 		})
 	}
 
-	// 5. Process Standings
-	var displayStandings []StandingsDisplay
-	bronzeID := "8nLg9ZsBicTerF07t22O"
-	var bronzeTeams []TeamRecord
-
-	for _, div := range standings {
-		if div.ID == bronzeID {
-			bronzeTeams = div.TeamRecords
-			break
-		}
-	}
-
-	for i, team := range bronzeTeams {
-		gp := team.Stats.Wins + team.Stats.Losses + team.Stats.Ties
-		displayStandings = append(displayStandings, StandingsDisplay{
-			Rank: i + 1,
-			Team: team.TeamName,
-			GP:   gp,
-			W:    team.Stats.Wins,
-			L:    team.Stats.Losses,
-			T:    team.Stats.Ties,
-			IsUs: team.TeamName == myTeamName,
-		})
-	}
-
-	// 6. Update Cache
+	// ==========================================
+	// 4. Update Cache
+	// ==========================================
 	cache.Data = PageData{
 		TeamName:  myTeamName,
 		Roster:    displayRoster,
@@ -173,30 +212,20 @@ func getPageData() PageData {
 }
 
 // --- FUZZY MATCHER HELPER ---
-
-// matchPlayerName tries to match a full name ("Jeremy Vermillion")
-// to a roster name ("Jeremy V")
 func matchPlayerName(scorekeeperName string, roster []Player) string {
 	parts := strings.Split(scorekeeperName, " ")
 	if len(parts) < 2 {
-		return scorekeeperName // Can't split, just return original
+		return scorekeeperName
 	}
-
 	firstName := parts[0]
 	lastName := parts[len(parts)-1]
 
 	for _, p := range roster {
-		// Do the first names match exactly? (Case-insensitive)
 		if strings.EqualFold(p.FirstName, firstName) {
-			// Does the scorekeeper last name start with the roster last name?
-			// (e.g. "Vermillion" starts with "V")
 			if len(p.LastName) > 0 && strings.HasPrefix(strings.ToLower(lastName), strings.ToLower(p.LastName)) {
-				// Match found! Return the key we use in statsMap
 				return p.FirstName + " " + p.LastName
 			}
 		}
 	}
-
-	// No match found in roster (likely a substitute player), return original name
 	return scorekeeperName
 }

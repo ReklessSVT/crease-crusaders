@@ -12,7 +12,7 @@ type Player struct {
 	TeamName  string `json:"team_name"`
 }
 
-// --- SCHEDULE ---
+// --- SCHEDULE (SportsEngine) ---
 type ScheduleResponse struct {
 	Games []RawGame `json:"result"`
 }
@@ -31,48 +31,30 @@ type RawGame struct {
 	} `json:"game_details"`
 }
 
-// --- STANDINGS ---
-type StandingsResponse struct {
-	Divisions []Division `json:"result"`
-}
-type Division struct {
-	ID          string       `json:"id"`
-	TeamRecords []TeamRecord `json:"teamRecords"`
-}
-type TeamRecord struct {
-	TeamName string      `json:"team_name"`
-	Stats    RecordStats `json:"values"`
-}
-type RecordStats struct {
-	Wins   int `json:"w"`
-	Losses int `json:"l"`
-	Ties   int `json:"t"`
-}
-
-// --- DETAILED STATS API ---
+// --- DETAILED STATS API (Scorekeeper) ---
 type DetailedStatsResponse struct {
 	Games []DetailedGame `json:"games"`
 }
 
 type DetailedGame struct {
-	Division string         `json:"division"`
-	HomeTeam string         `json:"homeTeam"`
-	AwayTeam string         `json:"awayTeam"`
-	Goals    []DetailedGoal `json:"goals"`
+	Division  string         `json:"division"`
+	HomeTeam  string         `json:"homeTeam"`
+	AwayTeam  string         `json:"awayTeam"`
+	HomeScore int            `json:"homeScore"`
+	AwayScore int            `json:"awayScore"`
+	Status    string         `json:"status"`
+	Goals     []DetailedGoal `json:"goals"`
+	Overtime  *OvertimeInfo  `json:"overtimeResult"` // Captures the OT winner
+}
+
+type OvertimeInfo struct {
+	Winner string `json:"winner"`
 }
 
 type DetailedGoal struct {
 	Team   string `json:"team"`
 	Player string `json:"player"`
-	Assist string `json:"assist"` // Can be empty string "" if unassisted
-}
-
-type PlayerStat struct {
-	Name    string
-	Jersey  string
-	Goals   int
-	Assists int
-	Points  int
+	Assist string `json:"assist"`
 }
 
 // --- WEATHER ---
@@ -85,13 +67,13 @@ type HourlyWeather struct {
 	WeatherCode []int     `json:"weathercode"`
 }
 
-// --- PAGE DISPLAY ---
+// --- PAGE DISPLAY MODELS ---
 type GameDisplay struct {
 	Date     string
 	Time     string
 	Opponent string
 	HomeAway string
-	Weather  string // The new field for forecast!
+	Weather  string
 }
 
 type StandingsDisplay struct {
@@ -100,8 +82,17 @@ type StandingsDisplay struct {
 	GP   int
 	W    int
 	L    int
-	T    int
+	OTL  int
+	Pts  int
 	IsUs bool
+}
+
+type PlayerStat struct {
+	Name    string
+	Jersey  string
+	Goals   int
+	Assists int
+	Points  int
 }
 
 type PageData struct {
